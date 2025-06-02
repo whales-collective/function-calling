@@ -290,7 +290,7 @@ func main() {
 
 	// Display the tool calls
 	for idx, toolCall := range dmrToolCalls {
-		fmt.Println(idx,".", "🐳", toolCall.Function.Name, toolCall.Function.Arguments)
+		fmt.Println(idx,".", "🦙", toolCall.Function.Name, toolCall.Function.Arguments)
 
 		switch toolCall.Function.Name {
 		case "search_products":
