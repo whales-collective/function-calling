@@ -253,7 +253,7 @@ func main() {
 
 		add 3 iPad Pro 12.9 to the cart
 		add 2 macbook air M3 to the cart
-		add 5 Sapiens book to the cart
+		add 5 Sapiens book to the cart and 2 Dune book to the cart
 
 		view the cart
 
