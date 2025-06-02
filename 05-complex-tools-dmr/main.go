@@ -44,6 +44,7 @@ func (e *Engine) ToolCompletion(messages []openai.ChatCompletionMessageParamUnio
 		Tools:    e.tools,
 		// Enable parallel tool calls for DMR, no need for this with Ollama
 		ParallelToolCalls: openai.Bool(true),
+		Seed:              openai.Int(0),
 		Temperature:       openai.Opt(0.0),
 	}
 
@@ -241,10 +242,14 @@ func main() {
 	// Create a new cart
 	cart := cart.NewCart()
 
-	dmrEngine := NewEngine(WithDockerModelRunner(ctx), WithModel(os.Getenv("MODEL_RUNNER_TOOL_LLM")))
-	dmrChatEngine := NewEngine(WithDockerModelRunner(ctx), WithModel(os.Getenv("MODEL_RUNNER_CHAT_LLM")))
+	llmToolEngine := NewEngine(WithDockerModelRunner(ctx), WithModel(os.Getenv("MODEL_RUNNER_TOOL_LLM")))
+	llmChatEngine := NewEngine(WithDockerModelRunner(ctx), WithModel(os.Getenv("MODEL_RUNNER_CHAT_LLM")))
 
-	dmrEngine.Tools(GetToolsCatalog())
+	fmt.Println("\n" + strings.Repeat("=", 50))
+	fmt.Println("🛠️  Tools completion...")
+	fmt.Println(strings.Repeat("=", 50))
+
+	llmToolEngine.Tools(GetToolsCatalog())
 
 	userQuestion := openai.UserMessage(`
 		search the Dune book in books 
@@ -254,25 +259,13 @@ func main() {
 		add 3 iPad Pro 12.9 to the cart
 		add 2 macbook air M3 to the cart
 		add 5 Sapiens book to the cart and 2 Dune book to the cart
-
-		view the cart
-
 		remove iPad Pro 12.9 from the cart
-		remove macbook air M3 and Sapiens book from the cart
 
 		view the cart
-
-		update the quantity of macbook air M3 to 1
-		update the quantity of iPad Pro 12.9 to 2
-		update the quantity of Sapiens book to 23
-
-		view the cart
-
-		checkout
 	`)
 
 	// No Sysystem message
-	dmrToolCalls, err := dmrEngine.ToolCompletion(
+	dmrToolCalls, err := llmToolEngine.ToolCompletion(
 		[]openai.ChatCompletionMessageParamUnion{
 			userQuestion,
 		},
@@ -314,7 +307,7 @@ func main() {
 					content += fmt.Sprintf("\n  - %s (%s): $%.2f", product.Name, product.Category, product.Price)
 				}
 				// Append the content to the messages
-				dmrEngine.Params.Messages = append(dmrEngine.Params.Messages, openai.ToolMessage(
+				llmToolEngine.Params.Messages = append(llmToolEngine.Params.Messages, openai.ToolMessage(
 					content, toolCall.ID,
 				))
 			}
@@ -338,7 +331,7 @@ func main() {
 					fmt.Printf("✅ Added %d of '%s' to the cart\n", args.Quantity, args.ProductName)
 					content := fmt.Sprintf("Added %d of '%s' to the cart", args.Quantity, args.ProductName)
 					// Append the content to the messages
-					dmrEngine.Params.Messages = append(dmrEngine.Params.Messages, openai.ToolMessage(
+					llmToolEngine.Params.Messages = append(llmToolEngine.Params.Messages, openai.ToolMessage(
 						content, toolCall.ID,
 					))
 				}
@@ -361,7 +354,7 @@ func main() {
 					fmt.Printf("✅ Removed '%s' from the cart\n", args.ProductName)
 					content := fmt.Sprintf("Removed '%s' from the cart", args.ProductName)
 					// Append the content to the messages
-					dmrEngine.Params.Messages = append(dmrEngine.Params.Messages, openai.ToolMessage(
+					llmToolEngine.Params.Messages = append(llmToolEngine.Params.Messages, openai.ToolMessage(
 						content, toolCall.ID,
 					))
 				}
@@ -371,7 +364,7 @@ func main() {
 			fmt.Println("🛒 Viewing cart contents:")
 			cart.DisplayCart()
 			// Append the cart contents to the messages
-			dmrEngine.Params.Messages = append(dmrEngine.Params.Messages, openai.ToolMessage(
+			llmToolEngine.Params.Messages = append(llmToolEngine.Params.Messages, openai.ToolMessage(
 				cart.PrintCart(), toolCall.ID,
 			))
 
@@ -394,7 +387,7 @@ func main() {
 					fmt.Printf("✅ Updated '%s' quantity to %d\n", args.ProductName, args.Quantity)
 					content := fmt.Sprintf("Updated '%s' quantity to %d", args.ProductName, args.Quantity)
 					// Append the content to the messages
-					dmrEngine.Params.Messages = append(dmrEngine.Params.Messages, openai.ToolMessage(
+					llmToolEngine.Params.Messages = append(llmToolEngine.Params.Messages, openai.ToolMessage(
 						content, toolCall.ID,
 					))
 				}
@@ -403,14 +396,14 @@ func main() {
 			fmt.Println("✅ Checkout completed successfully!")
 			content := "Checkout completed successfully!"
 			// Append the content to the messages
-			dmrEngine.Params.Messages = append(dmrEngine.Params.Messages, openai.ToolMessage(
+			llmToolEngine.Params.Messages = append(llmToolEngine.Params.Messages, openai.ToolMessage(
 				content, toolCall.ID,
 			))
 		default:
 			fmt.Println("😠 Unknown tool call:", toolCall.Function.Name)
 			content := fmt.Sprintf("Unknown tool call: %s", toolCall.Function.Name)
 			// Append the content to the messages
-			dmrEngine.Params.Messages = append(dmrEngine.Params.Messages, openai.ToolMessage(
+			llmToolEngine.Params.Messages = append(llmToolEngine.Params.Messages, openai.ToolMessage(
 				content, toolCall.ID,
 			))
 		}
@@ -419,7 +412,7 @@ func main() {
 	messages := []openai.ChatCompletionMessageParamUnion{
 		openai.SystemMessage(`You are a helpful assistant that can search products, manage a shopping cart`),
 	}
-	messages = append(messages, dmrEngine.Params.Messages...)
+	messages = append(messages, llmToolEngine.Params.Messages...)
 	messages = append(messages, openai.UserMessage(`
 		Make a summary of the previous conversation and the actions taken.
 		Include the total price of the cart and the number of items in it.
@@ -437,10 +430,10 @@ func main() {
 	`))
 
 	fmt.Println("\n" + strings.Repeat("=", 50))
-	fmt.Println("🛠️  Using DMR Chat Engine for chat completion...")
+	fmt.Println("🤖  Chat completion...")
 	fmt.Println(strings.Repeat("=", 50))
 
-	dmrChatEngine.ChatStreamCompletion(messages, 0.9, func(content string) {
+	llmChatEngine.ChatStreamCompletion(messages, 0.9, func(content string) {
 		fmt.Print(content)
 	})
 	fmt.Println("\n" + strings.Repeat("=", 50))
