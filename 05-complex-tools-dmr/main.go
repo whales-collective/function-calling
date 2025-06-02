@@ -232,7 +232,8 @@ func main() {
 	ctx := context.Background()
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalln("😡", err)
+		//log.Fatalln("😡", err)
+		// use the env variables from compose file if not found
 	}
 
 	products, err := models.LoadProducts("products.json")
@@ -283,7 +284,7 @@ func main() {
 
 	// Display the tool calls
 	for idx, toolCall := range dmrToolCalls {
-		fmt.Println(idx,".", "🐳", toolCall.Function.Name, toolCall.Function.Arguments)
+		fmt.Println(idx, ".", "🐳", toolCall.Function.Name, toolCall.Function.Arguments)
 
 		switch toolCall.Function.Name {
 		case "search_products":

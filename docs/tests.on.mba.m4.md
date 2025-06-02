@@ -66,6 +66,7 @@ MODEL_RUNNER_CHAT_LLM=ai/llama3.2:latest
 cd 05-complex-tools-dmr
 go run main.go
 ```
+> or `docker compose up`
 
 ### Tool completion result
 
